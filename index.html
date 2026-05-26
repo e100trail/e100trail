@@ -79,7 +79,11 @@
     .filter-btn { padding: 5px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 12px; transition: all 0.15s; }
     .filter-btn.active { background: linear-gradient(135deg, #434343 0%, #1F2937 100%); color: white; border-color: #1F2937; }
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
-    th { background: linear-gradient(135deg, #434343 0%, #1F2937 100%); color: white; padding: 11px 14px; text-align: left; font-size: 12px; white-space: nowrap; }
+    th { background: #3D3D3D; color: white; padding: 11px 14px; text-align: left; font-size: 12px; white-space: nowrap; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { background: #555; }
+    th .sort-icon { margin-left: 4px; opacity: 0.4; font-size: 10px; }
+    th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; }
     td { padding: 10px 14px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
     tr:last-child td { border-bottom: none; }
     tr:nth-child(even) td { background: #fafafa; }
@@ -337,12 +341,12 @@
     <table>
       <thead>
         <tr>
-          <th>日付</th>
+          <th class="sortable" onclick="sortTable('date')">日付<span class="sort-icon">↕</span></th>
           <th>種別</th>
           <th>名前</th>
-          <th>距離 (km)</th>
-          <th>獲得標高 (m)</th>
-          <th>タイム</th>
+          <th class="sortable" onclick="sortTable('distance_km')">距離 (km)<span class="sort-icon">↕</span></th>
+          <th class="sortable" onclick="sortTable('elevation_gain_m')">獲得標高 (m)<span class="sort-icon">↕</span></th>
+          <th class="sortable" onclick="sortTable('duration_min')">タイム<span class="sort-icon">↕</span></th>
           <th>ペース</th>
           <th>結果</th>
         </tr>
@@ -356,7 +360,7 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co'
+  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co/rest/v1/'
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycnRoa3p5b3hoanduY2V3c3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTU5MTIsImV4cCI6MjA5NTMzMTkxMn0.ICHNOo02svdndxBMWJivTygqphFSVNkgPfgYxG4oG24'
   const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -725,12 +729,53 @@
     }).join('')
   }
 
+  let sortCol = 'date'
+  let sortDir = 'desc'
+  let currentFilter = '全て'
+
+  function sortTable(col) {
+    if (sortCol === col) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortCol = col
+      sortDir = col === 'date' ? 'desc' : 'desc'
+    }
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc')
+      const icon = th.querySelector('.sort-icon')
+      if (icon) icon.textContent = '↕'
+    })
+    const active = [...document.querySelectorAll('th.sortable')].find(th =>
+      th.getAttribute('onclick')?.includes(`'${col}'`)
+    )
+    if (active) {
+      active.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc')
+      const icon = active.querySelector('.sort-icon')
+      if (icon) icon.textContent = sortDir === 'asc' ? '↑' : '↓'
+    }
+    applyFilterAndSort()
+  }
+
+  function applyFilterAndSort() {
+    let data = currentFilter === '全て'   ? [...allData]
+             : currentFilter === 'レース' ? allData.filter(a => a.is_race)
+             : allData.filter(a => a.type === currentFilter)
+
+    data.sort((a, b) => {
+      const av = a[sortCol] ?? ''
+      const bv = b[sortCol] ?? ''
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ?  1 : -1
+      return 0
+    })
+    renderTable(data)
+  }
+
   function filterTable(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
     btn.classList.add('active')
-    if (type === '全て') return renderTable(allData)
-    if (type === 'レース') return renderTable(allData.filter(a => a.is_race))
-    renderTable(allData.filter(a => a.type === type))
+    currentFilter = type
+    applyFilterAndSort()
   }
 
   fetchData()
