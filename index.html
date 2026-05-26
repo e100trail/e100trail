@@ -92,6 +92,29 @@
     .badge-完走 { background: #d4edda; color: #1a5c2e; }
     .badge-DNF { background: #f8d7da; color: #7a1c24; }
 
+    /* Profile */
+    .profile-toggle {
+      width: 100%; background: white; border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; font-size: 13px; font-weight: 700; color: #555;
+      transition: background 0.15s;
+    }
+    .profile-toggle:hover { background: #fafafa; }
+    .profile-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+    .profile-toggle.open .arrow { transform: rotate(180deg); }
+    .profile-body { display: none; background: white; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 20px; }
+    .profile-body.open { display: block; }
+    .profile-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .profile-card { background: #fafafa; border-radius: 8px; padding: 14px; text-align: center; }
+    .profile-card .p-value { font-size: 20px; font-weight: 700; color: #3D3D3D; line-height: 1; }
+    .profile-card .p-unit  { font-size: 11px; color: #aaa; margin-top: 2px; }
+    .profile-card .p-label { font-size: 11px; color: #777; margin-top: 8px; font-weight: 600; }
+    .profile-divider { border: none; border-top: 1px solid #f0f0f0; margin: 16px 0; }
+    .profile-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+    .profile-meta-item { font-size: 12px; color: #888; }
+    .profile-meta-item span { color: #333; font-weight: 600; }
+    @media (max-width: 640px) { .profile-grid { grid-template-columns: repeat(2, 1fr); } }
+
     /* Next Race */
     .next-race-card {
       border-radius: 12px; padding: 28px 32px; color: white;
@@ -157,6 +180,20 @@
       <div class="sub">Mt.FUJI 100 FUJI100mi · 167km</div>
     </div>
   </div>
+
+  <!-- Profile -->
+  <section id="profile-section" style="display:none">
+    <div class="section-title">プロフィール</div>
+    <button class="profile-toggle" id="profile-toggle" onclick="toggleProfile()">
+      ランナーステータス
+      <span class="arrow">▼</span>
+    </button>
+    <div class="profile-body" id="profile-body">
+      <div class="profile-grid" id="profile-grid"></div>
+      <hr class="profile-divider">
+      <div class="profile-meta" id="profile-meta"></div>
+    </div>
+  </section>
 
   <!-- Next Race -->
   <section id="next-race-section" style="display:none">
@@ -318,12 +355,14 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co'
+  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co/rest/v1/'
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycnRoa3p5b3hoanduY2V3c3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTU5MTIsImV4cCI6MjA5NTMzMTkxMn0.ICHNOo02svdndxBMWJivTygqphFSVNkgPfgYxG4oG24'
   const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   let allData = []
   let racesData = []
+  let profileData = null
+  let bodyMetricsData = []
   let currentPeriod = 'month'
   let currentYear = new Date().getFullYear()
   let distChart, elevChart
@@ -342,17 +381,27 @@
 
   // データ取得
   async function fetchData() {
-    const [{ data: activities, error }, { data: races }] = await Promise.all([
+    const [
+      { data: activities, error },
+      { data: races },
+      { data: profile },
+      { data: metrics }
+    ] = await Promise.all([
       client.from('activities').select('*').eq('is_public', true).order('date', { ascending: false }),
-      client.from('races').select('*').order('race_date', { ascending: true })
+      client.from('races').select('*').order('race_date', { ascending: true }),
+      client.from('profiles').select('*').limit(1).single(),
+      client.from('body_metrics').select('*').order('date', { ascending: false })
     ])
     if (error) { console.error(error); return }
     allData = activities || []
     racesData = races || []
+    profileData = profile || null
+    bodyMetricsData = metrics || []
     renderAll()
   }
 
   function renderAll() {
+    renderProfile()
     renderNextRace()
     renderPersonalRecords()
     renderTotalStats()
@@ -361,6 +410,46 @@
     renderCharts(currentYear)
     renderRaceSchedule()
     renderTable(allData)
+  }
+
+  // ── プロフィール ──
+  function toggleProfile() {
+    const toggle = document.getElementById('profile-toggle')
+    const body   = document.getElementById('profile-body')
+    toggle.classList.toggle('open')
+    body.classList.toggle('open')
+  }
+
+  function renderProfile() {
+    if (!profileData) return
+    document.getElementById('profile-section').style.display = ''
+    const p = profileData
+    const latest = bodyMetricsData[0] || null
+
+    const cards = [
+      { value: p.height_cm,              unit: 'cm', label: '身長' },
+      { value: latest?.weight_kg ?? '—', unit: 'kg', label: '体重' },
+      { value: latest?.body_fat_pct ?? '—', unit: '%', label: '体脂肪率' },
+      { value: p.shoe_size_cm,           unit: 'cm', label: '靴サイズ' },
+    ]
+    document.getElementById('profile-grid').innerHTML = cards.map(c => `
+      <div class="profile-card">
+        <div class="p-value">${c.value}</div>
+        <div class="p-unit">${c.unit}</div>
+        <div class="p-label">${c.label}</div>
+      </div>`).join('')
+
+    const fmt = d => d ? new Date(d).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+    const meta = [
+      { label: '血液型',       value: `${p.blood_type}型` },
+      { label: '活動エリア',   value: p.area },
+      { label: '登山開始',     value: fmt(p.started_hiking) },
+      { label: 'ランニング開始', value: fmt(p.started_running) },
+      { label: 'トレラン開始', value: fmt(p.started_trail) },
+    ]
+    document.getElementById('profile-meta').innerHTML = meta.map(m =>
+      `<div class="profile-meta-item">${m.label}：<span>${m.value}</span></div>`
+    ).join('')
   }
 
   // ── 次のレース ──
