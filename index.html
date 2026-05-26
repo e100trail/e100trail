@@ -820,34 +820,43 @@
       if (zone) zones[zone].push(g)
     })
 
-    const IH = 17     // row height per item
-    const LEND   = 232 // right edge of left labels
-    const RSTART = 468 // left edge of right labels
+    const IH = 17
+    const LEND   = 220
+    const RSTART = 530
     const FS = 10
+    const FC = '#c8c8c8'
 
-    // figX/figY: dot on figure, baseY: center y of label group, side L/R
     const CONF = {
-      head:  { figX: 325, figY: 38,  side: 'L', baseY: 36  },
-      back:  { figX: 298, figY: 84,  side: 'L', baseY: 84  },
-      lower: { figX: 322, figY: 180, side: 'L', baseY: 180 },
-      feet:  { figX: 312, figY: 287, side: 'L', baseY: 308 },
-      upper: { figX: 405, figY: 108, side: 'R', baseY: 108 },
-      hands: { figX: 442, figY: 148, side: 'R', baseY: 148 },
+      head:  { figX: 358, figY: 20,  side: 'L', baseY: 26  },
+      back:  { figX: 337, figY: 90,  side: 'L', baseY: 90  },
+      lower: { figX: 345, figY: 163, side: 'L', baseY: 163 },
+      feet:  { figX: 333, figY: 298, side: 'L', baseY: 312 },
+      upper: { figX: 413, figY: 110, side: 'R', baseY: 110 },
+      hands: { figX: 480, figY: 170, side: 'R', baseY: 158 },
     }
 
     const p = []
 
-    // シルエット
-    p.push(`<g stroke="#ccc" stroke-width="2" fill="none">
-      <circle cx="350" cy="44" r="24"/>
-      <line x1="350" y1="68" x2="350" y2="182"/>
-      <line x1="296" y1="82" x2="404" y2="82"/>
-      <line x1="296" y1="82" x2="258" y2="148"/>
-      <line x1="404" y1="82" x2="442" y2="148"/>
-      <line x1="333" y1="182" x2="317" y2="284"/>
-      <line x1="367" y1="182" x2="383" y2="284"/>
-      <line x1="317" y1="284" x2="299" y2="292"/>
-      <line x1="383" y1="284" x2="401" y2="292"/>
+    // シルエット（塗りつぶし）
+    p.push(`<g fill="${FC}" stroke="none">
+      <path d="M 337 70 L 413 70 Q 420 86 416 108 L 408 150 L 342 150 Q 330 108 330 86 Z"/>
+      <path d="M 342 150 L 408 150 L 402 182 L 348 182 Z"/>
+      <rect x="369" y="57" width="12" height="14" rx="4"/>
+      <ellipse cx="375" cy="36" rx="19" ry="23"/>
+    </g>
+    <g stroke="${FC}" fill="none" stroke-linecap="round">
+      <line x1="337" y1="86" x2="293" y2="147" stroke-width="17"/>
+      <line x1="293" y1="147" x2="270" y2="171" stroke-width="12"/>
+      <line x1="413" y1="86" x2="457" y2="147" stroke-width="17"/>
+      <line x1="457" y1="147" x2="480" y2="171" stroke-width="12"/>
+      <line x1="357" y1="180" x2="346" y2="250" stroke-width="23"/>
+      <line x1="346" y1="250" x2="337" y2="294" stroke-width="15"/>
+      <line x1="393" y1="180" x2="404" y2="250" stroke-width="23"/>
+      <line x1="404" y1="250" x2="413" y2="294" stroke-width="15"/>
+    </g>
+    <g fill="${FC}" stroke="none">
+      <ellipse cx="329" cy="301" rx="17" ry="7" transform="rotate(-5,329,301)"/>
+      <ellipse cx="421" cy="301" rx="17" ry="7" transform="rotate(5,421,301)"/>
     </g>`)
 
     Object.entries(CONF).forEach(([zone, c]) => {
@@ -859,9 +868,7 @@
       const anchor = c.side === 'L' ? 'end' : 'start'
       const tx = c.side === 'L' ? LEND : RSTART
 
-      // 接続ドット
-      p.push(`<circle cx="${c.figX}" cy="${c.figY}" r="3" fill="#EE0100"/>`)
-      // 点線
+      p.push(`<circle cx="${c.figX}" cy="${c.figY}" r="3.5" fill="#EE0100"/>`)
       p.push(`<line x1="${c.figX}" y1="${c.figY}" x2="${tx}" y2="${c.baseY}" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>`)
 
       items.forEach((g, i) => {
@@ -873,7 +880,7 @@
     })
 
     document.getElementById('gear-list').innerHTML =
-      `<svg viewBox="0 0 700 340" style="min-width:480px;width:100%;display:block;margin:0 auto">${p.join('')}</svg>`
+      `<svg viewBox="0 0 750 330" style="min-width:520px;width:100%;display:block;margin:0 auto">${p.join('')}</svg>`
   }
 
   // ── テーブル ──
