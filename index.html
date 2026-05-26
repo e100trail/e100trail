@@ -528,10 +528,12 @@
     const p = profileData
     const latest = bodyMetricsData[0] || null
 
-    const gearTotal = gearData.reduce((s, g) => s + (g.price_jpy || 0), 0)
-    const gearTotalStr = gearTotal >= 10000
-      ? `${(gearTotal / 10000).toFixed(1)}万`
-      : gearTotal.toLocaleString()
+    const gearTotal  = gearData.reduce((s, g) => s + (g.price_jpy || 0), 0)
+    const entryTotal = racesData.reduce((s, r) => s + (r.entry_fee_jpy || 0), 0)
+    const investTotal = gearTotal + entryTotal
+    const investStr = investTotal >= 10000
+      ? `${(investTotal / 10000).toFixed(1)}万`
+      : investTotal.toLocaleString()
 
     const cards = [
       { value: p.birth_date ? calcAge(p.birth_date) : '—', unit: '歳', label: '年齢' },
@@ -539,7 +541,7 @@
       { value: latest?.weight_kg ?? '—', unit: 'kg', label: '体重' },
       { value: latest?.body_fat_pct ?? '—', unit: '%', label: '体脂肪率' },
       { value: p.shoe_size_cm,           unit: 'cm', label: '靴サイズ' },
-      { value: gearTotalStr,             unit: '円', label: 'ギア投資額' },
+      { value: investStr,                 unit: '円', label: '累計投資額' },
     ]
     document.getElementById('profile-grid').innerHTML = cards.map(c => `
       <div class="profile-card">
