@@ -148,6 +148,16 @@
     .next-race-chip { background: rgba(255,255,255,0.12); border-radius: 20px; padding: 3px 12px; font-size: 12px; }
     .next-race-notes { font-size: 13px; color: rgba(255,255,255,0.65); font-style: italic; }
 
+    /* Gear */
+    .gear-grid { display: flex; flex-direction: column; gap: 20px; }
+    .gear-category-label { font-size: 11px; font-weight: 700; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .gear-items { display: flex; flex-wrap: wrap; gap: 8px; }
+    .gear-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 14px; min-width: 150px; }
+    .gear-card.retired { opacity: 0.4; }
+    .gear-name { font-size: 13px; font-weight: 700; color: #222; }
+    .gear-sub { font-size: 11px; color: #888; margin-top: 3px; }
+    .gear-notes { font-size: 11px; color: #aaa; font-style: italic; margin-top: 4px; }
+
     /* Race Schedule */
     .race-list { display: flex; flex-direction: column; gap: 8px; }
     .race-item {
@@ -213,6 +223,7 @@
     <a href="#section-totals">累計</a>
     <a href="#section-period">期間別</a>
     <a href="#section-charts">グラフ</a>
+    <a href="#gear-section">ギア</a>
     <a href="#race-schedule-section">レース</a>
     <a href="#activity-section">一覧</a>
   </div>
@@ -368,6 +379,12 @@
     </div>
   </section>
 
+  <!-- Gear -->
+  <section id="gear-section" style="display:none">
+    <div class="section-title">ギア</div>
+    <div class="gear-grid" id="gear-list"></div>
+  </section>
+
   <!-- Race Schedule -->
   <section id="race-schedule-section" style="display:none">
     <div class="section-title">出場予定レース</div>
@@ -424,6 +441,7 @@
   let racesData = []
   let profileData = null
   let bodyMetricsData = []
+  let gearData = []
   let currentPeriod = 'month'
   let currentYear = new Date().getFullYear()
   let distChart, elevChart
@@ -446,18 +464,21 @@
       { data: activities, error },
       { data: races },
       { data: profile },
-      { data: metrics }
+      { data: metrics },
+      { data: gear }
     ] = await Promise.all([
       client.from('activities').select('*').eq('is_public', true).order('date', { ascending: false }),
       client.from('races').select('*').order('race_date', { ascending: true }),
       client.from('profiles').select('*').limit(1).single(),
-      client.from('body_metrics').select('*').order('date', { ascending: false })
+      client.from('body_metrics').select('*').order('date', { ascending: false }),
+      client.from('gear').select('*').order('purchase_date', { ascending: true })
     ])
     if (error) { console.error(error); return }
     allData = activities || []
     racesData = races || []
     profileData = profile || null
     bodyMetricsData = metrics || []
+    gearData = gear || []
     renderAll()
   }
 
@@ -469,6 +490,7 @@
     renderPeriodStats(currentPeriod)
     renderYearTabs()
     renderCharts(currentYear)
+    renderGear()
     renderRaceSchedule()
     renderTable(allData)
     renderLastUpdated()
@@ -770,6 +792,35 @@
       options: opts,
       plugins: [totalLabelPlugin]
     })
+  }
+
+  // ── ギア ──
+  function renderGear() {
+    if (!gearData.length) return
+    document.getElementById('gear-section').style.display = ''
+
+    const CATEGORIES = ['シューズ', 'ザック', 'ソックス', 'ヘアバンド', 'ヘッドライト', '雨具', 'ウェア上', 'ウェア下', '手袋']
+    const html = CATEGORIES.map(cat => {
+      const items = gearData.filter(g => g.category === cat)
+      if (!items.length) return ''
+      return `<div>
+        <div class="gear-category-label">${cat}</div>
+        <div class="gear-items">
+          ${items.map(g => {
+            const sub = [g.brand, g.size].filter(Boolean).join(' · ')
+            const price = g.price_jpy > 0 ? `¥${g.price_jpy.toLocaleString()}` : ''
+            const subLine = [sub, price].filter(Boolean).join('　')
+            return `<div class="gear-card${g.is_active ? '' : ' retired'}">
+              <div class="gear-name">${g.name}</div>
+              ${subLine ? `<div class="gear-sub">${subLine}</div>` : ''}
+              ${g.notes ? `<div class="gear-notes">${g.notes}</div>` : ''}
+            </div>`
+          }).join('')}
+        </div>
+      </div>`
+    }).filter(Boolean).join('')
+
+    document.getElementById('gear-list').innerHTML = html
   }
 
   // ── テーブル ──
