@@ -810,10 +810,10 @@
       'ウェア上':     'upper',
       'ウェア下':     'lower',
       '手袋':         'hands',
-      'シューズ':     'feet',
-      'ソックス':     'feet',
+      'シューズ':     'shoes',
+      'ソックス':     'socks',
     }
-    const zones = { head: [], back: [], upper: [], hands: [], lower: [], feet: [] }
+    const zones = { head: [], back: [], upper: [], hands: [], lower: [], shoes: [], socks: [] }
     gearData.forEach(g => {
       let zone = ZONE_MAP[g.category]
       if (g.category === '雨具') zone = g.name.includes('パンツ') ? 'lower' : 'upper'
@@ -830,9 +830,10 @@
       head:  { figX: 358, figY: 20,  side: 'L', baseY: 26  },
       back:  { figX: 337, figY: 90,  side: 'L', baseY: 90  },
       lower: { figX: 345, figY: 163, side: 'L', baseY: 163 },
-      feet:  { figX: 333, figY: 298, side: 'L', baseY: 312 },
+      socks: { figX: 333, figY: 298, side: 'L', baseY: 310 },
       upper: { figX: 413, figY: 110, side: 'R', baseY: 110 },
       hands: { figX: 480, figY: 170, side: 'R', baseY: 158 },
+      shoes: { figX: 421, figY: 298, side: 'R', baseY: 310 },
     }
 
     const p = []
@@ -875,7 +876,8 @@
         const y = startY + i * IH
         const op = g.is_active ? 1 : 0.28
         const fw = g.is_active ? '600' : '400'
-        p.push(`<text x="${tx}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="${FS}" font-weight="${fw}" fill="#333" opacity="${op}">${g.name}</text>`)
+        const label = g.brand ? `${g.brand} ${g.name}` : g.name
+        p.push(`<text x="${tx}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="${FS}" font-weight="${fw}" fill="#333" opacity="${op}">${label}</text>`)
       })
     })
 
