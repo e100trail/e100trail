@@ -25,6 +25,14 @@
     .countdown .unit { font-size: 14px; color: #aaa; margin-left: 4px; }
     .countdown .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
 
+    /* Totals */
+    .total-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .total-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; text-align: center; }
+    .total-card .total-value { font-size: 22px; font-weight: 700; color: #3D3D3D; line-height: 1; }
+    .total-card .total-unit { font-size: 11px; color: #888; margin-top: 3px; }
+    .total-card .total-label { font-size: 11px; color: #555; margin-top: 10px; font-weight: 600; }
+    @media (max-width: 640px) { .total-grid { grid-template-columns: repeat(3, 1fr); } }
+
     /* Personal Records */
     .pr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
     .pr-card {
@@ -94,7 +102,7 @@
 <body>
 
 <header>
-  <h1>E100 — Activity Log</h1>
+  <h1>2030年に100マイル完走する体力テストD判定のエンジニア - Activity Log</h1>
   <p>2030年 Mt.FUJI 100（167km / +6,613m）完走への記録</p>
 </header>
 
@@ -143,6 +151,38 @@
     </div>
   </section>
 
+  <!-- Totals -->
+  <section>
+    <div class="section-title">累計（全期間）</div>
+    <div class="total-grid">
+      <div class="total-card">
+        <div class="total-value" id="total-dist">—</div>
+        <div class="total-unit">km</div>
+        <div class="total-label">走行距離</div>
+      </div>
+      <div class="total-card">
+        <div class="total-value" id="total-elev">—</div>
+        <div class="total-unit">m</div>
+        <div class="total-label">獲得標高</div>
+      </div>
+      <div class="total-card">
+        <div class="total-value" id="total-登山-count">—</div>
+        <div class="total-unit">回</div>
+        <div class="total-label">登山</div>
+      </div>
+      <div class="total-card">
+        <div class="total-value" id="total-トレラン-count">—</div>
+        <div class="total-unit">回</div>
+        <div class="total-label">トレラン</div>
+      </div>
+      <div class="total-card">
+        <div class="total-value" id="total-ランニング-count">—</div>
+        <div class="total-unit">回</div>
+        <div class="total-label">ランニング</div>
+      </div>
+    </div>
+  </section>
+
   <!-- Period Stats -->
   <section>
     <div class="section-title">期間別統計</div>
@@ -177,7 +217,7 @@
   <section>
     <div class="section-title">グラフ</div>
     <div class="year-tabs" id="year-tabs"></div>
-    <div class="chart-legend">■ 実績　<span style="opacity:0.4">■</span> 予測（今年の月平均から算出）</div>
+    <div class="chart-legend">■ 実績　<span style="opacity:0.4">■</span> 予測（今年の合計 ÷ 経過月数）</div>
     <div class="chart-grid">
       <div class="chart-box"><h3>月別 距離 (km)</h3><canvas id="chart-dist"></canvas></div>
       <div class="chart-box"><h3>月別 獲得標高 (m)</h3><canvas id="chart-elev"></canvas></div>
@@ -203,11 +243,12 @@
           <th>距離 (km)</th>
           <th>獲得標高 (m)</th>
           <th>タイム</th>
+          <th>ペース</th>
           <th>結果</th>
         </tr>
       </thead>
       <tbody id="activity-list">
-        <tr><td colspan="7" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
+        <tr><td colspan="8" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
       </tbody>
     </table>
   </section>
@@ -246,10 +287,25 @@
 
   function renderAll() {
     renderPersonalRecords()
+    renderTotalStats()
     renderPeriodStats(currentPeriod)
     renderYearTabs()
     renderCharts(currentYear)
     renderTable(allData)
+  }
+
+  // ── 累計統計 ──
+  function renderTotalStats() {
+    const totalDist = allData.reduce((s,a) => s + (a.distance_km||0), 0)
+    const totalElev = allData.reduce((s,a) => s + (a.elevation_gain_m||0), 0)
+    document.getElementById('total-dist').textContent = totalDist >= 1000
+      ? (Math.round(totalDist * 10) / 10).toFixed(1)
+      : totalDist.toFixed(1)
+    document.getElementById('total-elev').textContent = totalElev.toLocaleString()
+    TYPES.forEach(type => {
+      document.getElementById(`total-${type}-count`).textContent =
+        allData.filter(a => a.type === type).length
+    })
   }
 
   // ── パーソナルレコード ──
@@ -371,17 +427,12 @@
     const isCurrentYear = parseInt(year) === now.getFullYear()
     const currentMi = now.getMonth() // 0-indexed
 
-    // 月平均を計算（実績ある月のみ）
+    // 月平均を計算（年間合計 ÷ 経過月数）
     const avg = {}
+    const monthsElapsed = isCurrentYear ? currentMi + 1 : 12
     TYPES.forEach(type => {
-      let sum = 0, count = 0
-      for (let mi = 0; mi < (isCurrentYear ? currentMi : 12); mi++) {
-        const mm = String(mi+1).padStart(2,'0')
-        const v = yearData.filter(a => a.type===type && a.date.startsWith(`${year}-${mm}`))
-                          .reduce((s,a)=>s+(a[key]||0),0)
-        if (v > 0) { sum += v; count++ }
-      }
-      avg[type] = count > 0 ? sum/count : 0
+      const sum = yearData.filter(a => a.type === type).reduce((s,a) => s + (a[key]||0), 0)
+      avg[type] = monthsElapsed > 0 ? sum / monthsElapsed : 0
     })
 
     return TYPES.map(type => ({
@@ -434,7 +485,7 @@
   function renderTable(data) {
     const tbody = document.getElementById('activity-list')
     if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px">データなし</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;padding:24px">データなし</td></tr>'
       return
     }
     tbody.innerHTML = data.map(a => {
@@ -442,6 +493,13 @@
       const status = a.status ? `<span class="badge badge-${a.status}">${a.status}</span>` : '—'
       const raceBadge = a.is_race ? '<span class="badge badge-race">レース</span> ' : ''
       const name = a.race_name || a.notes || '—'
+      let pace = '—'
+      if ((a.type === 'ランニング' || a.type === 'トレラン') && a.duration_min && a.distance_km) {
+        const pMin = a.duration_min / a.distance_km
+        const m = Math.floor(pMin)
+        const s = Math.round((pMin - m) * 60)
+        pace = `${m}:${String(s).padStart(2,'0')}/km`
+      }
       return `<tr id="row-${a.date}">
         <td>${a.date}</td>
         <td><span class="badge badge-${a.type}">${a.type}</span></td>
@@ -449,6 +507,7 @@
         <td>${a.distance_km ?? '—'}</td>
         <td>${a.elevation_gain_m ? a.elevation_gain_m.toLocaleString() : '—'}</td>
         <td>${h}</td>
+        <td>${pace}</td>
         <td>${status}</td>
       </tr>`
     }).join('')
