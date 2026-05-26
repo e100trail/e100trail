@@ -150,14 +150,7 @@
     .next-race-notes { font-size: 13px; color: rgba(255,255,255,0.65); font-style: italic; }
 
     /* Gear */
-    .gear-grid { display: flex; flex-direction: column; gap: 20px; }
-    .gear-category-label { font-size: 11px; font-weight: 700; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
-    .gear-items { display: flex; flex-wrap: wrap; gap: 8px; }
-    .gear-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 14px; min-width: 150px; }
-    .gear-card.retired { opacity: 0.4; }
-    .gear-name { font-size: 13px; font-weight: 700; color: #222; }
-    .gear-sub { font-size: 11px; color: #888; margin-top: 3px; }
-    .gear-notes { font-size: 11px; color: #aaa; font-style: italic; margin-top: 4px; }
+    .gear-diagram-wrap { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
     /* Race Schedule */
     .race-list { display: flex; flex-direction: column; gap: 8px; }
@@ -225,8 +218,8 @@
     <a href="#section-period">期間別</a>
     <a href="#section-charts">グラフ</a>
     <a href="#race-schedule-section">レース</a>
-    <a href="#gear-section">ギア</a>
     <a href="#activity-section">一覧</a>
+    <a href="#gear-section">ギア</a>
   </div>
 </nav>
 
@@ -386,12 +379,6 @@
     <div class="race-list" id="race-schedule-list"></div>
   </section>
 
-  <!-- Gear -->
-  <section id="gear-section" style="display:none">
-    <div class="section-title">ギア</div>
-    <div class="gear-grid" id="gear-list"></div>
-  </section>
-
   <!-- Activity Table -->
   <section id="activity-section">
     <div class="section-title">アクティビティ一覧</div>
@@ -419,6 +406,14 @@
         <tr><td colspan="8" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
       </tbody>
     </table>
+  </section>
+
+  <!-- Gear -->
+  <section id="gear-section" style="display:none">
+    <div class="section-title">ギア</div>
+    <div class="gear-diagram-wrap">
+      <div id="gear-list"></div>
+    </div>
   </section>
 
 </div>
@@ -808,28 +803,77 @@
     if (!gearData.length) return
     document.getElementById('gear-section').style.display = ''
 
-    const CATEGORIES = ['シューズ', 'ザック', 'ソックス', 'ヘアバンド', 'ヘッドライト', '雨具', 'ウェア上', 'ウェア下', '手袋']
-    const html = CATEGORIES.map(cat => {
-      const items = gearData.filter(g => g.category === cat)
-      if (!items.length) return ''
-      return `<div>
-        <div class="gear-category-label">${cat}</div>
-        <div class="gear-items">
-          ${items.map(g => {
-            const sub = [g.brand, g.size].filter(Boolean).join(' · ')
-            const price = g.price_jpy > 0 ? `¥${g.price_jpy.toLocaleString()}` : ''
-            const subLine = [sub, price].filter(Boolean).join('　')
-            return `<div class="gear-card${g.is_active ? '' : ' retired'}">
-              <div class="gear-name">${g.name}</div>
-              ${subLine ? `<div class="gear-sub">${subLine}</div>` : ''}
-              ${g.notes ? `<div class="gear-notes">${g.notes}</div>` : ''}
-            </div>`
-          }).join('')}
-        </div>
-      </div>`
-    }).filter(Boolean).join('')
+    const ZONE_MAP = {
+      'ヘアバンド':   'head',
+      'ヘッドライト': 'head',
+      'ザック':       'back',
+      'ウェア上':     'upper',
+      'ウェア下':     'lower',
+      '手袋':         'hands',
+      'シューズ':     'feet',
+      'ソックス':     'feet',
+    }
+    const zones = { head: [], back: [], upper: [], hands: [], lower: [], feet: [] }
+    gearData.forEach(g => {
+      let zone = ZONE_MAP[g.category]
+      if (g.category === '雨具') zone = g.name.includes('パンツ') ? 'lower' : 'upper'
+      if (zone) zones[zone].push(g)
+    })
 
-    document.getElementById('gear-list').innerHTML = html
+    const IH = 17     // row height per item
+    const LEND   = 232 // right edge of left labels
+    const RSTART = 468 // left edge of right labels
+    const FS = 10
+
+    // figX/figY: dot on figure, baseY: center y of label group, side L/R
+    const CONF = {
+      head:  { figX: 325, figY: 38,  side: 'L', baseY: 36  },
+      back:  { figX: 298, figY: 84,  side: 'L', baseY: 84  },
+      lower: { figX: 322, figY: 180, side: 'L', baseY: 180 },
+      feet:  { figX: 312, figY: 287, side: 'L', baseY: 308 },
+      upper: { figX: 405, figY: 108, side: 'R', baseY: 108 },
+      hands: { figX: 442, figY: 148, side: 'R', baseY: 148 },
+    }
+
+    const p = []
+
+    // シルエット
+    p.push(`<g stroke="#ccc" stroke-width="2" fill="none">
+      <circle cx="350" cy="44" r="24"/>
+      <line x1="350" y1="68" x2="350" y2="182"/>
+      <line x1="296" y1="82" x2="404" y2="82"/>
+      <line x1="296" y1="82" x2="258" y2="148"/>
+      <line x1="404" y1="82" x2="442" y2="148"/>
+      <line x1="333" y1="182" x2="317" y2="284"/>
+      <line x1="367" y1="182" x2="383" y2="284"/>
+      <line x1="317" y1="284" x2="299" y2="292"/>
+      <line x1="383" y1="284" x2="401" y2="292"/>
+    </g>`)
+
+    Object.entries(CONF).forEach(([zone, c]) => {
+      const items = zones[zone]
+      if (!items.length) return
+
+      const n = items.length
+      const startY = c.baseY - ((n - 1) * IH) / 2
+      const anchor = c.side === 'L' ? 'end' : 'start'
+      const tx = c.side === 'L' ? LEND : RSTART
+
+      // 接続ドット
+      p.push(`<circle cx="${c.figX}" cy="${c.figY}" r="3" fill="#EE0100"/>`)
+      // 点線
+      p.push(`<line x1="${c.figX}" y1="${c.figY}" x2="${tx}" y2="${c.baseY}" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>`)
+
+      items.forEach((g, i) => {
+        const y = startY + i * IH
+        const op = g.is_active ? 1 : 0.28
+        const fw = g.is_active ? '600' : '400'
+        p.push(`<text x="${tx}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="${FS}" font-weight="${fw}" fill="#333" opacity="${op}">${g.name}</text>`)
+      })
+    })
+
+    document.getElementById('gear-list').innerHTML =
+      `<svg viewBox="0 0 700 340" style="min-width:480px;width:100%;display:block;margin:0 auto">${p.join('')}</svg>`
   }
 
   // ── テーブル ──
