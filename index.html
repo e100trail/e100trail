@@ -4,11 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E100 - Activity Log</title>
+  <title>2030年に100マイル完走する体力テストD判定のエンジニア - Activity Log</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f9; color: #222; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
 
     header { background: #3D3D3D; color: white; padding: 24px 32px; }
     header h1 { font-size: 20px; font-weight: 700; }
@@ -16,49 +17,83 @@
 
     .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
 
-    /* Summary cards */
-    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
-    .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; text-align: center; }
-    .card .value { font-size: 28px; font-weight: 700; color: #3D3D3D; }
-    .card .label { font-size: 12px; color: #888; margin-top: 4px; }
+    section { margin-bottom: 32px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
 
     /* Countdown */
-    .countdown { background: #3D3D3D; color: white; border-radius: 8px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
-    .countdown .days { font-size: 36px; font-weight: 700; }
-    .countdown .text { font-size: 13px; color: #aaa; }
+    .countdown { background: #3D3D3D; color: white; border-radius: 8px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .countdown .days { font-size: 40px; font-weight: 700; }
+    .countdown .unit { font-size: 14px; color: #aaa; margin-left: 4px; }
+    .countdown .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
 
-    /* Filters */
-    .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-    .filter-btn { padding: 6px 16px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    /* Personal Records */
+    .pr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .pr-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; text-align: center; }
+    .pr-card .pr-value { font-size: 26px; font-weight: 700; color: #3D3D3D; line-height: 1; }
+    .pr-card .pr-unit { font-size: 11px; color: #888; margin-top: 2px; }
+    .pr-card .pr-label { font-size: 11px; color: #555; margin-top: 8px; font-weight: 600; }
+
+    /* Period Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab { padding: 7px 20px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+    .tab.active { background: #3D3D3D; color: white; border-color: #3D3D3D; }
+
+    /* Type Stats */
+    .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .type-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; }
+    .type-card .type-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .type-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-登山 { background: #a0522d; }
+    .dot-トレラン { background: #2d6a4f; }
+    .dot-ランニング { background: #1a4d7a; }
+    .type-name { font-size: 14px; font-weight: 700; }
+    .type-stat { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+    .type-stat:last-child { border-bottom: none; }
+    .stat-label { font-size: 12px; color: #888; }
+    .stat-value { font-size: 14px; font-weight: 600; }
+
+    /* Charts */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .chart-box { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; }
+    .chart-box h3 { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 12px; }
+
+    /* Year selector */
+    .year-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .year-tab { padding: 5px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+    .year-tab.active { background: #3D3D3D; color: white; border-color: #3D3D3D; }
+
+    /* Activity Table */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 5px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 12px; transition: all 0.15s; }
     .filter-btn.active { background: #3D3D3D; color: white; border-color: #3D3D3D; }
 
-    /* Table */
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
-    th { background: #3D3D3D; color: white; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; }
-    td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+    th { background: #3D3D3D; color: white; padding: 11px 14px; text-align: left; font-size: 12px; }
+    td { padding: 10px 14px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
     tr:last-child td { border-bottom: none; }
     tr:nth-child(even) td { background: #fafafa; }
 
-    /* Badges */
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-    .badge-登山 { background: #f5e6c8; color: #7c5c2a; }
-    .badge-トレラン { background: #d4edda; color: #2a6b3a; }
-    .badge-ランニング { background: #d0e8ff; color: #1a4d7a; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .badge-登山 { background: #f5e6c8; color: #7c4a1e; }
+    .badge-トレラン { background: #d4edda; color: #1a5c2e; }
+    .badge-ランニング { background: #d0e8ff; color: #0d3a6b; }
     .badge-race { background: #3D3D3D; color: white; }
-    .badge-dnf { background: #f8d7da; color: #842029; }
-    .badge-完走 { background: #d4edda; color: #2a6b3a; }
+    .badge-完走 { background: #d4edda; color: #1a5c2e; }
+    .badge-DNF { background: #f8d7da; color: #7a1c24; }
 
     @media (max-width: 600px) {
-      .summary { grid-template-columns: repeat(2, 1fr); }
-      .hide-mobile { display: none; }
+      .pr-grid { grid-template-columns: repeat(2, 1fr); }
+      .type-grid { grid-template-columns: 1fr; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .hide-sp { display: none; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>E100 - Activity Log</h1>
-  <p>2030年 Mt.FUJI 100（167km）完走への記録</p>
+  <h1>E100 — Activity Log</h1>
+  <p>2030年 Mt.FUJI 100（167km / +6,613m）完走への記録</p>
 </header>
 
 <div class="container">
@@ -66,132 +101,293 @@
   <!-- Countdown -->
   <div class="countdown">
     <div>
-      <div class="days" id="countdown-days">---</div>
-      <div class="text">Mt.FUJI 100 まで</div>
+      <span class="days" id="countdown-days">---</span><span class="unit">日</span>
+      <div class="sub">Mt.FUJI 100 まで</div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:13px">2030年4月</div>
-      <div class="text">Mt.FUJI 100 FUJI100mi</div>
+      <div style="font-size:13px;font-weight:600;">2030年4月</div>
+      <div class="sub">Mt.FUJI 100 FUJI100mi · 167km</div>
     </div>
   </div>
 
-  <!-- Summary -->
-  <div class="summary">
-    <div class="card">
-      <div class="value" id="total-distance">-</div>
-      <div class="label">累計距離 (km)</div>
+  <!-- Personal Records -->
+  <section>
+    <div class="section-title">Personal Records</div>
+    <div class="pr-grid">
+      <div class="pr-card">
+        <div class="pr-value" id="pr-dist">—</div>
+        <div class="pr-unit">km</div>
+        <div class="pr-label">最長距離</div>
+      </div>
+      <div class="pr-card">
+        <div class="pr-value" id="pr-elev">—</div>
+        <div class="pr-unit">m</div>
+        <div class="pr-label">最大獲得標高</div>
+      </div>
+      <div class="pr-card">
+        <div class="pr-value" id="pr-time">—</div>
+        <div class="pr-unit">h</div>
+        <div class="pr-label">最長タイム</div>
+      </div>
+      <div class="pr-card">
+        <div class="pr-value" id="pr-finish">—</div>
+        <div class="pr-unit">回</div>
+        <div class="pr-label">レース完走</div>
+      </div>
     </div>
-    <div class="card">
-      <div class="value" id="total-elevation">-</div>
-      <div class="label">累計獲得標高 (m)</div>
-    </div>
-    <div class="card">
-      <div class="value" id="race-count">-</div>
-      <div class="label">レース出走数</div>
-    </div>
-  </div>
+  </section>
 
-  <!-- Filters -->
-  <div class="filters">
-    <button class="filter-btn active" onclick="filterActivities('全て')">全て</button>
-    <button class="filter-btn" onclick="filterActivities('レース')">レース</button>
-    <button class="filter-btn" onclick="filterActivities('登山')">登山</button>
-    <button class="filter-btn" onclick="filterActivities('トレラン')">トレラン</button>
-    <button class="filter-btn" onclick="filterActivities('ランニング')">ランニング</button>
-  </div>
+  <!-- Period Stats -->
+  <section>
+    <div class="section-title">期間別統計</div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchPeriod('month', this)">今月</button>
+      <button class="tab" onclick="switchPeriod('year', this)">今年</button>
+      <button class="tab" onclick="switchPeriod('all', this)">全期間</button>
+    </div>
+    <div class="type-grid">
+      <div class="type-card" id="stat-登山">
+        <div class="type-header">
+          <div class="type-dot dot-登山"></div>
+          <div class="type-name">登山</div>
+        </div>
+        <div class="type-stat"><span class="stat-label">アクティビティ数</span><span class="stat-value" id="st-登山-count">—</span></div>
+        <div class="type-stat"><span class="stat-label">距離</span><span class="stat-value" id="st-登山-dist">—</span></div>
+        <div class="type-stat"><span class="stat-label">獲得標高</span><span class="stat-value" id="st-登山-elev">—</span></div>
+      </div>
+      <div class="type-card">
+        <div class="type-header">
+          <div class="type-dot dot-トレラン"></div>
+          <div class="type-name">トレラン</div>
+        </div>
+        <div class="type-stat"><span class="stat-label">アクティビティ数</span><span class="stat-value" id="st-トレラン-count">—</span></div>
+        <div class="type-stat"><span class="stat-label">距離</span><span class="stat-value" id="st-トレラン-dist">—</span></div>
+        <div class="type-stat"><span class="stat-label">獲得標高</span><span class="stat-value" id="st-トレラン-elev">—</span></div>
+      </div>
+      <div class="type-card">
+        <div class="type-header">
+          <div class="type-dot dot-ランニング"></div>
+          <div class="type-name">ランニング</div>
+        </div>
+        <div class="type-stat"><span class="stat-label">アクティビティ数</span><span class="stat-value" id="st-ランニング-count">—</span></div>
+        <div class="type-stat"><span class="stat-label">距離</span><span class="stat-value" id="st-ランニング-dist">—</span></div>
+        <div class="type-stat"><span class="stat-label">獲得標高</span><span class="stat-value" id="st-ランニング-elev">—</span></div>
+      </div>
+    </div>
+  </section>
 
-  <!-- Table -->
-  <table>
-    <thead>
-      <tr>
-        <th>日付</th>
-        <th>種別</th>
-        <th>名前</th>
-        <th>距離 (km)</th>
-        <th class="hide-mobile">獲得標高 (m)</th>
-        <th class="hide-mobile">タイム</th>
-        <th>結果</th>
-      </tr>
-    </thead>
-    <tbody id="activity-list">
-      <tr><td colspan="7" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
-    </tbody>
-  </table>
+  <!-- Charts -->
+  <section>
+    <div class="section-title">グラフ</div>
+    <div class="year-tabs" id="year-tabs"></div>
+    <div class="chart-grid">
+      <div class="chart-box">
+        <h3>月別 距離 (km)</h3>
+        <canvas id="chart-dist"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>月別 獲得標高 (m)</h3>
+        <canvas id="chart-elev"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Activity List -->
+  <section>
+    <div class="section-title">アクティビティ一覧</div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="filterTable('全て', this)">全て</button>
+      <button class="filter-btn" onclick="filterTable('レース', this)">レース</button>
+      <button class="filter-btn" onclick="filterTable('登山', this)">登山</button>
+      <button class="filter-btn" onclick="filterTable('トレラン', this)">トレラン</button>
+      <button class="filter-btn" onclick="filterTable('ランニング', this)">ランニング</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>種別</th>
+          <th>名前</th>
+          <th>距離 (km)</th>
+          <th class="hide-sp">獲得標高 (m)</th>
+          <th class="hide-sp">タイム</th>
+          <th>結果</th>
+        </tr>
+      </thead>
+      <tbody id="activity-list">
+        <tr><td colspan="7" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
+      </tbody>
+    </table>
+  </section>
 
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co'
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycnRoa3p5b3hoanduY2V3c3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTU5MTIsImV4cCI6MjA5NTMzMTkxMn0.ICHNOo02svdndxBMWJivTygqphFSVNkgPfgYxG4oG24'
-
+  const SUPABASE_URL = 'YOUR_URL'
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'
   const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  let allActivities = []
+
+  let allData = []
+  let currentPeriod = 'month'
+  let currentYear = new Date().getFullYear()
+  let distChart, elevChart
 
   // カウントダウン
-  const target = new Date('2030-04-01')
-  const today = new Date()
-  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
-  document.getElementById('countdown-days').textContent = diff.toLocaleString() + '日'
+  const days = Math.ceil((new Date('2030-04-01') - new Date()) / 86400000)
+  document.getElementById('countdown-days').textContent = days.toLocaleString()
 
   // データ取得
-  async function fetchActivities() {
+  async function fetchData() {
     const { data, error } = await client
       .from('activities')
       .select('*')
       .eq('is_public', true)
       .order('date', { ascending: false })
-
     if (error) { console.error(error); return; }
-
-    allActivities = data
-
-    // サマリー
-    const totalDist = data.reduce((s, a) => s + (a.distance_km || 0), 0)
-    const totalElev = data.reduce((s, a) => s + (a.elevation_gain_m || 0), 0)
-    const raceCount = data.filter(a => a.is_race).length
-
-    document.getElementById('total-distance').textContent = Math.round(totalDist).toLocaleString()
-    document.getElementById('total-elevation').textContent = Math.round(totalElev).toLocaleString()
-    document.getElementById('race-count').textContent = raceCount
-
-    renderTable(data)
+    allData = data
+    renderAll()
   }
 
+  function renderAll() {
+    renderPersonalRecords()
+    renderPeriodStats(currentPeriod)
+    renderYearTabs()
+    renderCharts(currentYear)
+    renderTable(allData)
+  }
+
+  // パーソナルレコード
+  function renderPersonalRecords() {
+    const maxDist = Math.max(...allData.map(a => a.distance_km || 0))
+    const maxElev = Math.max(...allData.map(a => a.elevation_gain_m || 0))
+    const maxMin  = Math.max(...allData.map(a => a.duration_min || 0))
+    const finishCount = allData.filter(a => a.is_race && a.status === '完走').length
+
+    const h = Math.floor(maxMin / 60)
+    const m = maxMin % 60
+
+    document.getElementById('pr-dist').textContent = maxDist.toFixed(1)
+    document.getElementById('pr-elev').textContent = maxElev.toLocaleString()
+    document.getElementById('pr-time').textContent = `${h}:${String(m).padStart(2,'0')}`
+    document.getElementById('pr-finish').textContent = finishCount
+  }
+
+  // 期間別統計
+  function renderPeriodStats(period) {
+    const now = new Date()
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+    const y  = String(now.getFullYear())
+
+    const filtered = allData.filter(a => {
+      if (period === 'month') return a.date.startsWith(ym)
+      if (period === 'year')  return a.date.startsWith(y)
+      return true
+    })
+
+    ;['登山','トレラン','ランニング'].forEach(type => {
+      const items = filtered.filter(a => a.type === type)
+      const dist  = items.reduce((s, a) => s + (a.distance_km || 0), 0)
+      const elev  = items.reduce((s, a) => s + (a.elevation_gain_m || 0), 0)
+      document.getElementById(`st-${type}-count`).textContent = `${items.length}回`
+      document.getElementById(`st-${type}-dist`).textContent  = `${dist.toFixed(1)} km`
+      document.getElementById(`st-${type}-elev`).textContent  = `${elev.toLocaleString()} m`
+    })
+  }
+
+  function switchPeriod(period, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    btn.classList.add('active')
+    currentPeriod = period
+    renderPeriodStats(period)
+  }
+
+  // 年タブ
+  function renderYearTabs() {
+    const years = [...new Set(allData.map(a => a.date.slice(0,4)))].sort()
+    const container = document.getElementById('year-tabs')
+    container.innerHTML = years.map(y =>
+      `<button class="year-tab ${y == currentYear ? 'active' : ''}" onclick="switchYear(${y}, this)">${y}年</button>`
+    ).join('')
+  }
+
+  function switchYear(year, btn) {
+    document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'))
+    btn.classList.add('active')
+    currentYear = year
+    renderCharts(year)
+  }
+
+  // グラフ
+  function renderCharts(year) {
+    const months = Array.from({length: 12}, (_, i) => i + 1)
+    const yearData = allData.filter(a => a.date.startsWith(String(year)))
+
+    const types = ['登山','トレラン','ランニング']
+    const colors = { '登山': '#a0522d', 'トレラン': '#2d6a4f', 'ランニング': '#1a4d7a' }
+
+    const distDatasets = types.map(type => ({
+      label: type,
+      data: months.map(m => {
+        const mm = String(m).padStart(2,'0')
+        return yearData.filter(a => a.type === type && a.date.startsWith(`${year}-${mm}`))
+                       .reduce((s, a) => s + (a.distance_km || 0), 0)
+      }),
+      backgroundColor: colors[type]
+    }))
+
+    const elevDatasets = types.map(type => ({
+      label: type,
+      data: months.map(m => {
+        const mm = String(m).padStart(2,'0')
+        return yearData.filter(a => a.type === type && a.date.startsWith(`${year}-${mm}`))
+                       .reduce((s, a) => s + (a.elevation_gain_m || 0), 0)
+      }),
+      backgroundColor: colors[type]
+    }))
+
+    const labels = months.map(m => `${m}月`)
+    const opts = { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } }
+
+    if (distChart) distChart.destroy()
+    if (elevChart) elevChart.destroy()
+
+    distChart = new Chart(document.getElementById('chart-dist'), { type: 'bar', data: { labels, datasets: distDatasets }, options: opts })
+    elevChart = new Chart(document.getElementById('chart-elev'), { type: 'bar', data: { labels, datasets: elevDatasets }, options: opts })
+  }
+
+  // テーブル
   function renderTable(data) {
     const tbody = document.getElementById('activity-list')
-    if (data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:32px">データなし</td></tr>'
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px">データなし</td></tr>'
       return
     }
-
     tbody.innerHTML = data.map(a => {
-      const duration = a.duration_min ? `${Math.floor(a.duration_min/60)}h${a.duration_min%60}m` : '-'
-      const status = a.status ? `<span class="badge badge-${a.status}">${a.status}</span>` : '-'
+      const h = a.duration_min ? `${Math.floor(a.duration_min/60)}h${a.duration_min%60}m` : '—'
+      const status = a.status ? `<span class="badge badge-${a.status}">${a.status}</span>` : '—'
       const raceBadge = a.is_race ? '<span class="badge badge-race">レース</span> ' : ''
-      const name = a.race_name || a.notes || '-'
-
+      const name = a.race_name || a.notes || '—'
       return `<tr>
         <td>${a.date}</td>
         <td><span class="badge badge-${a.type}">${a.type}</span></td>
         <td>${raceBadge}${name}</td>
-        <td>${a.distance_km || '-'}</td>
-        <td class="hide-mobile">${a.elevation_gain_m ? a.elevation_gain_m.toLocaleString() : '-'}</td>
-        <td class="hide-mobile">${duration}</td>
+        <td>${a.distance_km ?? '—'}</td>
+        <td class="hide-sp">${a.elevation_gain_m ? a.elevation_gain_m.toLocaleString() : '—'}</td>
+        <td class="hide-sp">${h}</td>
         <td>${status}</td>
       </tr>`
     }).join('')
   }
 
-  function filterActivities(type) {
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'))
-    event.target.classList.add('active')
-
-    if (type === '全て') return renderTable(allActivities)
-    if (type === 'レース') return renderTable(allActivities.filter(a => a.is_race))
-    renderTable(allActivities.filter(a => a.type === type))
+  function filterTable(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    if (type === '全て') return renderTable(allData)
+    if (type === 'レース') return renderTable(allData.filter(a => a.is_race))
+    renderTable(allData.filter(a => a.type === type))
   }
 
-  fetchActivities()
+  fetchData()
 </script>
 
 </body>
