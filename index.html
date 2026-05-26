@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E100 - Activity Log</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f9; color: #222; }
+
+    header { background: #3D3D3D; color: white; padding: 24px 32px; }
+    header h1 { font-size: 20px; font-weight: 700; }
+    header p { font-size: 13px; color: #aaa; margin-top: 4px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Summary cards */
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; text-align: center; }
+    .card .value { font-size: 28px; font-weight: 700; color: #3D3D3D; }
+    .card .label { font-size: 12px; color: #888; margin-top: 4px; }
+
+    /* Countdown */
+    .countdown { background: #3D3D3D; color: white; border-radius: 8px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
+    .countdown .days { font-size: 36px; font-weight: 700; }
+    .countdown .text { font-size: 13px; color: #aaa; }
+
+    /* Filters */
+    .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 16px; border: 1px solid #ccc; border-radius: 20px; background: white; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .filter-btn.active { background: #3D3D3D; color: white; border-color: #3D3D3D; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
+    th { background: #3D3D3D; color: white; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; }
+    td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fafafa; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-登山 { background: #f5e6c8; color: #7c5c2a; }
+    .badge-トレラン { background: #d4edda; color: #2a6b3a; }
+    .badge-ランニング { background: #d0e8ff; color: #1a4d7a; }
+    .badge-race { background: #3D3D3D; color: white; }
+    .badge-dnf { background: #f8d7da; color: #842029; }
+    .badge-完走 { background: #d4edda; color: #2a6b3a; }
+
+    @media (max-width: 600px) {
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .hide-mobile { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>E100 - Activity Log</h1>
+  <p>2030年 Mt.FUJI 100（167km）完走への記録</p>
+</header>
+
+<div class="container">
+
+  <!-- Countdown -->
+  <div class="countdown">
+    <div>
+      <div class="days" id="countdown-days">---</div>
+      <div class="text">Mt.FUJI 100 まで</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:13px">2030年4月</div>
+      <div class="text">Mt.FUJI 100 FUJI100mi</div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="card">
+      <div class="value" id="total-distance">-</div>
+      <div class="label">累計距離 (km)</div>
+    </div>
+    <div class="card">
+      <div class="value" id="total-elevation">-</div>
+      <div class="label">累計獲得標高 (m)</div>
+    </div>
+    <div class="card">
+      <div class="value" id="race-count">-</div>
+      <div class="label">レース出走数</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterActivities('全て')">全て</button>
+    <button class="filter-btn" onclick="filterActivities('レース')">レース</button>
+    <button class="filter-btn" onclick="filterActivities('登山')">登山</button>
+    <button class="filter-btn" onclick="filterActivities('トレラン')">トレラン</button>
+    <button class="filter-btn" onclick="filterActivities('ランニング')">ランニング</button>
+  </div>
+
+  <!-- Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>種別</th>
+        <th>名前</th>
+        <th>距離 (km)</th>
+        <th class="hide-mobile">獲得標高 (m)</th>
+        <th class="hide-mobile">タイム</th>
+        <th>結果</th>
+      </tr>
+    </thead>
+    <tbody id="activity-list">
+      <tr><td colspan="7" style="text-align:center;color:#888;padding:32px">読み込み中...</td></tr>
+    </tbody>
+  </table>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co/rest/v1/'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycnRoa3p5b3hoanduY2V3c3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTU5MTIsImV4cCI6MjA5NTMzMTkxMn0.ICHNOo02svdndxBMWJivTygqphFSVNkgPfgYxG4oG24'
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  let allActivities = []
+
+  // カウントダウン
+  const target = new Date('2030-04-01')
+  const today = new Date()
+  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  document.getElementById('countdown-days').textContent = diff.toLocaleString() + '日'
+
+  // データ取得
+  async function fetchActivities() {
+    const { data, error } = await client
+      .from('activities')
+      .select('*')
+      .eq('is_public', true)
+      .order('date', { ascending: false })
+
+    if (error) { console.error(error); return; }
+
+    allActivities = data
+
+    // サマリー
+    const totalDist = data.reduce((s, a) => s + (a.distance_km || 0), 0)
+    const totalElev = data.reduce((s, a) => s + (a.elevation_gain_m || 0), 0)
+    const raceCount = data.filter(a => a.is_race).length
+
+    document.getElementById('total-distance').textContent = Math.round(totalDist).toLocaleString()
+    document.getElementById('total-elevation').textContent = Math.round(totalElev).toLocaleString()
+    document.getElementById('race-count').textContent = raceCount
+
+    renderTable(data)
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('activity-list')
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:32px">データなし</td></tr>'
+      return
+    }
+
+    tbody.innerHTML = data.map(a => {
+      const duration = a.duration_min ? `${Math.floor(a.duration_min/60)}h${a.duration_min%60}m` : '-'
+      const status = a.status ? `<span class="badge badge-${a.status}">${a.status}</span>` : '-'
+      const raceBadge = a.is_race ? '<span class="badge badge-race">レース</span> ' : ''
+      const name = a.race_name || a.notes || '-'
+
+      return `<tr>
+        <td>${a.date}</td>
+        <td><span class="badge badge-${a.type}">${a.type}</span></td>
+        <td>${raceBadge}${name}</td>
+        <td>${a.distance_km || '-'}</td>
+        <td class="hide-mobile">${a.elevation_gain_m ? a.elevation_gain_m.toLocaleString() : '-'}</td>
+        <td class="hide-mobile">${duration}</td>
+        <td>${status}</td>
+      </tr>`
+    }).join('')
+  }
+
+  function filterActivities(type) {
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'))
+    event.target.classList.add('active')
+
+    if (type === '全て') return renderTable(allActivities)
+    if (type === 'レース') return renderTable(allActivities.filter(a => a.is_race))
+    renderTable(allActivities.filter(a => a.type === type))
+  }
+
+  fetchActivities()
+</script>
+
+</body>
+</html>
