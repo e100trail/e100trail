@@ -9,6 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=LINE+Seed+JP:wght@400;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="favicon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://e100trail.github.io/e100trail/">
+  <meta property="og:title" content="E100 | 2030年に100マイル完走する体力テストD判定のエンジニア">
+  <meta property="og:description" content="体力テストD判定の26歳エンジニアが、2030年4月のMt.FUJI 100（167km / +6,613m）完走を目指す記録。登山・ランニング・トレランのアクティビティをすべて公開中。">
+  <meta property="og:image" content="https://e100trail.github.io/e100trail/favicon.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@e100trail">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -156,6 +163,21 @@
     .race-stat-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .race-stat-chip  { background: #f0f0f0; border-radius: 10px; padding: 2px 9px; font-size: 11px; color: #555; white-space: nowrap; }
 
+    /* Sticky nav */
+    .page-nav { position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .page-nav-inner { max-width: 960px; margin: 0 auto; padding: 0 16px; display: flex; overflow-x: auto; }
+    .page-nav-inner::-webkit-scrollbar { display: none; }
+    .page-nav a { display: block; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #666; text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    .page-nav a:hover { color: #1E0167; border-bottom-color: #1E0167; }
+
+    /* Footer */
+    footer { background: linear-gradient(135deg, #2d01a0 0%, #1E0167 100%); color: rgba(255,255,255,0.6); padding: 28px 32px; margin-top: 8px; }
+    .footer-inner { max-width: 960px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 600; text-decoration: none; transition: color 0.15s; }
+    .footer-links a:hover { color: white; }
+    .footer-meta { font-size: 12px; }
+
     @media (max-width: 640px) {
       .pr-grid { grid-template-columns: repeat(2, 1fr); }
       .type-grid { grid-template-columns: 1fr; }
@@ -165,6 +187,7 @@
       .next-race-right { padding-left: 0; padding-top: 4px; }
       .race-item { grid-template-columns: 1fr; }
       .race-stat-chips { justify-content: flex-start; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
@@ -183,6 +206,17 @@
     </a>
   </p>
 </header>
+
+<nav class="page-nav">
+  <div class="page-nav-inner">
+    <a href="#section-pr">PR</a>
+    <a href="#section-totals">累計</a>
+    <a href="#section-period">期間別</a>
+    <a href="#section-charts">グラフ</a>
+    <a href="#race-schedule-section">レース</a>
+    <a href="#activity-section">一覧</a>
+  </div>
+</nav>
 
 <div class="container">
 
@@ -231,7 +265,7 @@
   </section>
 
   <!-- Personal Records -->
-  <section>
+  <section id="section-pr">
     <div class="section-title">Personal Records</div>
     <div class="pr-grid">
       <div class="pr-card" id="pr-card-dist">
@@ -262,7 +296,7 @@
   </section>
 
   <!-- Totals -->
-  <section>
+  <section id="section-totals">
     <div class="section-title">累計（全期間）</div>
     <div class="total-grid">
       <div class="total-card">
@@ -294,7 +328,7 @@
   </section>
 
   <!-- Period Stats -->
-  <section>
+  <section id="section-period">
     <div class="section-title">期間別統計</div>
     <div class="tabs">
       <button class="tab active" onclick="switchPeriod('month', this)">今月</button>
@@ -324,7 +358,7 @@
   </section>
 
   <!-- Charts -->
-  <section>
+  <section id="section-charts">
     <div class="section-title">グラフ</div>
     <div class="year-tabs" id="year-tabs"></div>
     <div class="chart-legend">■ 実績　<span style="opacity:0.4">■</span> 予測（今年の合計 ÷ 経過月数）</div>
@@ -370,6 +404,16 @@
   </section>
 
 </div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="https://note.com/e100trail" target="_blank">Note</a>
+      <a href="https://x.com/e100trail" target="_blank">X (Twitter)</a>
+    </div>
+    <div class="footer-meta">最終更新：<span id="last-updated">—</span></div>
+  </div>
+</footer>
 
 <script>
   const SUPABASE_URL = 'https://frrthkzyoxhjwncewsvk.supabase.co'
@@ -427,6 +471,16 @@
     renderCharts(currentYear)
     renderRaceSchedule()
     renderTable(allData)
+    renderLastUpdated()
+  }
+
+  function renderLastUpdated() {
+    const el = document.getElementById('last-updated')
+    if (!el) return
+    const latest = allData[0]?.date
+    el.textContent = latest
+      ? new Date(latest).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
+      : '—'
   }
 
   // ── プロフィール ──
