@@ -1,16 +1,46 @@
-## Hi there 👋
+# E100 Trail Dashboard
 
-<!--
-**e100trail/e100trail** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+**2030年にMt.FUJI 100（167km）完走を目指す、体力テストD判定エンジニアの活動記録ダッシュボード**
 
-Here are some ideas to get you started:
+🔗 [ダッシュボードを見る](https://e100trail.github.io/e100trail/)  
+📝 [Note](https://note.com/e100trail) / 🐦 [X (@e100trail)](https://x.com/e100trail)
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+---
+
+## 概要
+
+ランニング・登山・トレランの活動データをリアルタイムで可視化する個人ダッシュボードです。
+Supabase をバックエンドに、GitHub Pages で静的サイトとして公開しています。
+
+## 機能
+
+- **カウントダウン** — Mt.FUJI 100 本番まであと何日かを表示
+- **次のレース** — 直近の出場予定レースとエントリー情報
+- **自己ベスト (PR)** — 距離・獲得標高・タイムの個人記録
+- **累計統計** — 総距離・総獲得標高・総活動時間・総活動数
+- **期間別集計** — 月別・年別の活動サマリー
+- **グラフ** — 月次距離・獲得標高の棒グラフ
+- **レーススケジュール** — 出場予定大会一覧（エントリー費・締切含む）
+- **活動一覧** — 全データを並び替え・フィルタリングして閲覧
+- **ギアリスト** — 使用ギアのシルエット図表示
+
+## 技術スタック
+
+| 項目 | 内容 |
+|------|------|
+| フロントエンド | HTML / CSS / Vanilla JS |
+| バックエンド | [Supabase](https://supabase.com)（PostgreSQL + RLS） |
+| ホスティング | GitHub Pages |
+| フォント | LINE Seed JP (Google Fonts) |
+
+## ファイル構成
+
+```
+index.html   # メインダッシュボード（GitHub Pages で公開）
+add.html     # データ入力補助ツール（ローカル使用）
+favicon.svg  # ファビコン
+```
+
+## データ管理
+
+`add.html` をローカルで開き、活動・レース・体組成・ギアの INSERT SQL を生成して Supabase のSQLエディタで実行しています。
