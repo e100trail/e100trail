@@ -119,7 +119,7 @@
     .profile-toggle.open .arrow { transform: rotate(180deg); }
     .profile-body { display: none; background: white; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 20px; }
     .profile-body.open { display: block; }
-    .profile-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .profile-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
     .profile-card { background: #fafafa; border-radius: 8px; padding: 14px; text-align: center; }
     .profile-card .p-value { font-size: 20px; font-weight: 700; color: #3D3D3D; line-height: 1; }
     .profile-card .p-unit  { font-size: 11px; color: #aaa; margin-top: 2px; }
@@ -166,6 +166,36 @@
     .race-item-notes { font-size: 12px; color: #999; font-style: italic; }
     .race-stat-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .race-stat-chip  { background: #f0f0f0; border-radius: 10px; padding: 2px 9px; font-size: 11px; color: #555; white-space: nowrap; }
+    .race-phase-badge { font-size: 10px; font-weight: 700; color: #888; background: #f0f0f0; padding: 1px 7px; border-radius: 8px; display: inline-block; margin-top: 4px; }
+    .race-item.highlight { background: #fff5f5 !important; box-shadow: 0 0 0 2px #EE0100; transition: box-shadow 0.3s, background 0.3s; }
+
+    /* Phase Roadmap */
+    .phase-roadmap { display: flex; align-items: flex-start; padding: 12px 4px 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; }
+    .phase-roadmap::-webkit-scrollbar { display: none; }
+    .phase-node { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 44px; }
+    .phase-node.clickable { cursor: pointer; }
+    .phase-node.clickable:hover .phase-dot { transform: scale(1.3); }
+    .phase-node.clickable:hover .phase-label { color: #EE0100; }
+    .phase-dot { width: 10px; height: 10px; border-radius: 50%; background: #ddd; transition: transform 0.15s; }
+    .phase-dot.on { background: #EE0100; }
+    .phase-dot.current { background: #EE0100; box-shadow: 0 0 0 3px rgba(238,1,0,0.2); }
+    .phase-seg { flex: 1; min-width: 20px; height: 2px; background: #e8e8e8; margin-top: 4px; align-self: flex-start; }
+    .phase-seg.on { background: #EE0100; }
+    .phase-rank { font-size: 10px; font-weight: 700; color: #ccc; margin-top: 5px; }
+    .phase-rank.on { color: #EE0100; }
+    .phase-label { font-size: 9px; color: #ccc; margin-top: 2px; text-align: center; max-width: 48px; line-height: 1.3; }
+    .phase-label.on { color: #999; }
+
+    /* Phase Info */
+    .phase-info { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .phase-info-days-row { display: flex; align-items: baseline; gap: 3px; }
+    .phase-info-days { font-size: 30px; font-weight: 700; color: #3D3D3D; line-height: 1; }
+    .phase-info-unit { font-size: 12px; color: #888; }
+    .phase-info-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+    .phase-info-cond { font-size: 12px; color: #555; }
+    .phase-info-cond strong { color: #EE0100; }
+    .phase-info-prog { font-size: 11px; color: #aaa; margin-top: 4px; text-align: right; }
+    .phase-info-prog.clear { color: #22c55e; font-weight: 700; }
 
     /* Page Nav (Tab switcher) */
     .page-nav { position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
@@ -435,9 +465,12 @@
         <div class="section-title" style="margin-bottom:0">100マイル達成スキル</div>
         <a class="skills-note-link" href="https://note.com/e100trail" target="_blank">この仕組みについて →</a>
       </div>
+      <div id="phase-roadmap"></div>
+      <div id="phase-info"></div>
       <div class="radar-wrap">
         <canvas id="radar-chart"></canvas>
       </div>
+      <div id="rank-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div class="skill-cards" id="skill-cards">
         <div style="text-align:center;color:#aaa;padding:32px;font-size:13px">読み込み中...</div>
       </div>
@@ -520,8 +553,8 @@
   const COLORS = { '登山': '#a0522d', 'トレラン': '#2d6a4f', 'ランニング': '#1a4d7a' }
   const TYPES = ['登山', 'トレラン', 'ランニング']
 
-  const SKILL_IDS   = ['fueling','endurance','recovery','descending','decision','adaptation','core','mental','nutrition','climbing']
-  const SKILL_NAMES = ['補給力','継続力','回復力','下降力','判断力','修正力','体幹力','メンタル力','栄養力','登攀力']
+  const SKILL_IDS   = ['climbing','descending','core','endurance','recovery','fueling','nutrition','decision','adaptation','mental']
+  const SKILL_NAMES = ['登坂力','下降力','体幹力','継続力','回復力','補給力','栄養力','判断力','修正力','メンタル力']
   const RANKS = ['D','C','B','A','S','S+']
   const RANK_COLORS = { 'D':'#9ca3af','C':'#4ade80','B':'#60a5fa','A':'#fbbf24','S':'#f97316','S+':'#EE0100' }
 
@@ -614,6 +647,7 @@
     const p = profileData, latest = bodyMetricsData[0] || null
     const cards = [
       { value: p.birth_date ? calcAge(p.birth_date) : '—', unit: '歳', label: '年齢' },
+      { value: p.gender ?? '—', unit: '', label: '性別' },
       { value: p.height_cm, unit: 'cm', label: '身長' },
       { value: latest?.weight_kg ?? '—', unit: 'kg', label: '体重' },
       { value: latest?.body_fat_pct ?? '—', unit: '%', label: '体脂肪率' },
@@ -622,7 +656,7 @@
     document.getElementById('profile-grid').innerHTML = cards.map(c => `
       <div class="profile-card">
         <div class="p-value">${c.value}</div>
-        <div class="p-unit">${c.unit}</div>
+        <div class="p-unit">${c.unit || '&nbsp;'}</div>
         <div class="p-label">${c.label}</div>
       </div>`).join('')
     const fmt = d => d ? new Date(d).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
@@ -661,6 +695,114 @@
     document.getElementById('next-race-notes').textContent = next.notes || ''
   }
 
+  // ── Phase ──
+  const MILESTONE_RACES = [
+    { rank: 'C',  name: '葛西臨海公園ナイトハーフマラソン', label: '葛西' },
+    { rank: 'B',  name: 'Mt.FUJI 100 ASUMI40k',           label: 'ASUMI' },
+    { rank: 'A',  name: 'Mt.FUJI 100 KAI70k',             label: 'KAI' },
+    { rank: 'S',  name: 'TOKYO100',                        label: 'TOKYO100' },
+    { rank: 'S+', name: 'Mt.FUJI 100 FUJI100mi',          label: '100mi' },
+  ]
+
+  function getRacePhase(dateStr) {
+    const d = dateStr.substring(0, 10)
+    if (d <= '2026-07-11') return 'Ph.1'
+    if (d <= '2027-04-30') return 'Ph.2'
+    if (d <= '2028-04-30') return 'Ph.3'
+    if (d <= '2029-11-30') return 'Ph.4'
+    return 'Ph.5'
+  }
+
+  function getOverallRank() {
+    let rank = 'D'
+    for (const m of MILESTONE_RACES) {
+      const done = allData.some(a => a.is_race && a.race_name === m.name && a.status === '完走')
+      if (done) rank = m.rank
+      else break
+    }
+    return rank
+  }
+
+  function jumpToRace(name) {
+    const btn = document.querySelector('.page-nav-inner button[data-tab="races"]')
+    showTab('races', btn)
+    setTimeout(() => {
+      const item = document.querySelector(`#race-schedule-list .race-item[data-race-name="${name}"]`)
+      if (!item) return
+      item.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      item.classList.add('highlight')
+      setTimeout(() => item.classList.remove('highlight'), 2000)
+    }, 80)
+  }
+
+  function renderPhaseInfo() {
+    const el = document.getElementById('phase-info')
+    if (!el) return
+    const today = new Date(); today.setHours(0,0,0,0)
+    const phases = [
+      { num: 1, endRaceName: '葛西臨海公園ナイトハーフマラソン', targetRank: 'C' },
+      { num: 2, endRaceName: 'Mt.FUJI 100 ASUMI40k',           targetRank: 'B' },
+      { num: 3, endRaceName: 'Mt.FUJI 100 KAI70k',             targetRank: 'A' },
+      { num: 4, endRaceName: 'TOKYO100',                        targetRank: 'S' },
+      { num: 5, endRaceName: 'Mt.FUJI 100 FUJI100mi',          targetRank: 'S+' },
+    ]
+    let cur = null
+    for (const p of phases) {
+      const race = racesData.find(r => r.name === p.endRaceName)
+      if (!race) continue
+      const rd = new Date(race.race_date); rd.setHours(0,0,0,0)
+      if (today <= rd) {
+        cur = { ...p, days: Math.ceil((rd - today) / 86400000) }
+        break
+      }
+    }
+    if (!cur) { el.innerHTML = ''; return }
+    const targetIdx = RANKS.indexOf(cur.targetRank)
+    const achieved = SKILL_IDS.filter(id => RANKS.indexOf(getSkillProgress(id).currentRank) >= targetIdx).length
+    const total = SKILL_IDS.length
+    const cleared = achieved === total
+    el.innerHTML = `
+      <div class="phase-info">
+        <div>
+          <div class="phase-info-days-row">
+            <span class="phase-info-days">${cur.days}</span>
+            <span class="phase-info-unit">日</span>
+          </div>
+          <div class="phase-info-sub">Ph.${cur.num} 終了まで</div>
+        </div>
+        <div style="text-align:right">
+          <div class="phase-info-cond">全スキル <strong>${cur.targetRank}</strong> ランク以上</div>
+          <div class="phase-info-prog ${cleared ? 'clear' : ''}">${cleared ? '✓ 条件クリア' : `${achieved} / ${total} 達成`}</div>
+        </div>
+      </div>`
+  }
+
+  function renderPhaseRoadmap() {
+    const overallRank = getOverallRank()
+    const rankIdx = RANKS.indexOf(overallRank)
+    const nodes = [{ rank: 'D', label: '', name: null }, ...MILESTONE_RACES]
+    let html = '<div class="phase-roadmap">'
+    nodes.forEach((node, i) => {
+      const nIdx = RANKS.indexOf(node.rank)
+      const achieved = nIdx < rankIdx
+      const current  = nIdx === rankIdx
+      const dotCls   = achieved ? 'phase-dot on' : current ? 'phase-dot current' : 'phase-dot'
+      const rankCls  = (achieved || current) ? 'phase-rank on' : 'phase-rank'
+      const lblCls   = (achieved || current) ? 'phase-label on' : 'phase-label'
+      const onclick  = node.name ? `onclick="jumpToRace('${node.name}')"` : ''
+      html += `<div class="phase-node ${node.name ? 'clickable' : ''}" ${onclick}>
+        <div class="${dotCls}"></div>
+        <div class="${rankCls}">${node.rank}</div>
+        <div class="${lblCls}">${node.label}</div>
+      </div>`
+      if (i < nodes.length - 1) {
+        html += `<div class="phase-seg ${achieved ? 'on' : ''}"></div>`
+      }
+    })
+    html += '</div>'
+    document.getElementById('phase-roadmap').innerHTML = html
+  }
+
   // ── レーススケジュール ──
   function renderRaceSchedule() {
     const today = new Date(); today.setHours(0,0,0,0)
@@ -674,8 +816,11 @@
       if (r.distance_km) chips.push(`${r.distance_km} km`)
       if (r.elevation_gain_m) chips.push(`+${r.elevation_gain_m.toLocaleString()} m`)
       if (r.type) chips.push(r.type)
-      return `<div class="race-item ${isTrail ? 'trail' : 'road'}">
-        <div class="race-date-label">${dateStr}</div>
+      return `<div class="race-item ${isTrail ? 'trail' : 'road'}" data-race-name="${r.name}">
+        <div class="race-date-label">
+          ${dateStr}
+          <span class="race-phase-badge">${getRacePhase(r.race_date)}</span>
+        </div>
         <div>
           <div class="race-item-name">${r.name}</div>
           ${r.notes ? `<div class="race-item-notes">${r.notes}</div>` : ''}
@@ -1105,6 +1250,8 @@
   function renderSkills() {
     if (!milestonesData.length) return
     const progress = SKILL_IDS.map(id => getSkillProgress(id))
+    renderPhaseRoadmap()
+    renderPhaseInfo()
 
     // レーダーチャート
     if (radarChart) radarChart.destroy()
@@ -1136,6 +1283,15 @@
         plugins: { legend: { display: false } }
       }
     })
+
+    // ランクサマリー
+    const rankCounts = Object.fromEntries(RANKS.map(r => [r, 0]))
+    progress.forEach(p => rankCounts[p.currentRank]++)
+    document.getElementById('rank-summary').innerHTML = RANKS.map(r =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:${RANK_COLORS[r]};color:white;font-size:11px;font-weight:700">
+        ${r}<span style="opacity:0.75;font-weight:400">· ${rankCounts[r]}</span>
+      </span>`
+    ).join('')
 
     // スキルカード
     document.getElementById('skill-cards').innerHTML = SKILL_IDS.map((id, i) =>
