@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -470,7 +471,7 @@
     <section>
       <div class="skills-top">
         <div class="section-title" style="margin-bottom:0">100マイル達成スキル</div>
-        <a class="skills-note-link" href="https://note.com/e100trail/n/n84496783d4e7" target="_blank">この仕組みについて →</a>
+        <a class="skills-note-link" href="https://note.com/e100trail" target="_blank">この仕組みについて →</a>
       </div>
       <div id="phase-roadmap"></div>
       <div id="phase-info"></div>
@@ -513,7 +514,7 @@
             <th>名前</th>
             <th class="sortable" onclick="sortTable('distance_km')">距離 (km)<span class="sort-icon">↕</span></th>
             <th class="sortable" onclick="sortTable('elevation_gain_m')">獲得標高 (m)<span class="sort-icon">↕</span></th>
-            <th class="sortable" onclick="sortTable('duration_min')">タイム<span class="sort-icon">↕</span></th>
+            <th class="sortable" onclick="sortTable('duration_sec')">タイム<span class="sort-icon">↕</span></th>
             <th>ペース</th>
             <th>結果</th>
           </tr>
@@ -871,7 +872,7 @@
   function renderPersonalRecords() {
     const byDist  = [...allData].sort((a,b) => (b.distance_km||0) - (a.distance_km||0))[0]
     const byElev  = [...allData].sort((a,b) => (b.elevation_gain_m||0) - (a.elevation_gain_m||0))[0]
-    const byTime  = [...allData].sort((a,b) => (b.duration_min||0) - (a.duration_min||0))[0]
+    const byTime  = [...allData].sort((a,b) => (b.duration_sec||0) - (a.duration_sec||0))[0]
     const finishes = allData.filter(a => a.is_race && a.status === '完走')
     if (byDist) {
       document.getElementById('pr-dist').textContent = byDist.distance_km?.toFixed(1) ?? '—'
@@ -884,7 +885,8 @@
       document.getElementById('pr-card-elev').onclick = () => scrollToActivity(byElev.date)
     }
     if (byTime) {
-      const h = Math.floor((byTime.duration_min||0)/60), m = (byTime.duration_min||0)%60
+      const _s = byTime.duration_sec||0
+      const h = Math.floor(_s/3600), m = Math.floor(_s%3600/60)
       document.getElementById('pr-time').textContent = `${h}:${String(m).padStart(2,'0')}`
       document.getElementById('pr-time-meta').textContent = activityMeta(byTime)
       document.getElementById('pr-card-time').onclick = () => scrollToActivity(byTime.date)
@@ -1073,14 +1075,16 @@
       return
     }
     tbody.innerHTML = data.map(a => {
-      const h = a.duration_min ? `${Math.floor(a.duration_min/60)}h${a.duration_min%60}m` : '—'
+      const h = a.duration_sec ? (a.duration_sec >= 3600
+        ? `${Math.floor(a.duration_sec/3600)}h${Math.floor(a.duration_sec%3600/60)}m`
+        : `${Math.floor(a.duration_sec/60)}m${a.duration_sec%60}s`) : '—'
       const status = a.status ? `<span class="badge badge-${a.status}">${a.status}</span>` : '—'
       const raceBadge = a.is_race ? '<span class="badge badge-race">レース</span> ' : ''
       const name = a.race_name || a.notes || '—'
       let pace = '—'
-      if ((a.type==='ランニング'||a.type==='トレラン') && a.duration_min && a.distance_km) {
-        const pMin = a.duration_min / a.distance_km
-        pace = `${Math.floor(pMin)}:${String(Math.round((pMin-Math.floor(pMin))*60)).padStart(2,'0')}/km`
+      if ((a.type==='ランニング'||a.type==='トレラン') && a.duration_sec && a.distance_km) {
+        const pSec = a.duration_sec / a.distance_km
+        pace = `${Math.floor(pSec/60)}:${String(Math.round(pSec%60)).padStart(2,'0')}/km`
       }
       return `<tr id="row-${a.date}">
         <td>${a.date}</td>
@@ -1177,7 +1181,7 @@
       }
 
       case 'single_duration_gte': {
-        const match = asc.find(a => (a.duration_min||0) >= m.auto_threshold)
+        const match = asc.find(a => (a.duration_sec||0) >= m.auto_threshold)
         return match ? { achieved: true, date: formatDate(match.date) } : { achieved: false, date: null }
       }
 
