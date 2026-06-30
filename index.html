@@ -1241,7 +1241,7 @@
 
     let currentRank = 'D'
     for (let i = 0; i < RANKS.length - 1; i++) {
-      const steps = evaluated.filter(m => m.from_rank===RANKS[i] && m.to_rank===RANKS[i+1])
+      const steps = evaluated.filter(m => m.from_rank===RANKS[i] && m.to_rank===RANKS[i+1] && m.auto_type !== 'moved')
       if (steps.length > 0 && steps.every(m => m.isAchieved)) currentRank = RANKS[i+1]
       else break
     }
@@ -1249,7 +1249,7 @@
     const rankIndex = RANKS.indexOf(currentRank)
     let progressDone = 0, progressTotal = 0
     if (rankIndex < RANKS.length - 1) {
-      const nextSteps = evaluated.filter(m => m.from_rank===currentRank && m.to_rank===RANKS[rankIndex+1])
+      const nextSteps = evaluated.filter(m => m.from_rank===currentRank && m.to_rank===RANKS[rankIndex+1] && m.auto_type !== 'moved')
       progressTotal = nextSteps.length
       progressDone = nextSteps.filter(m => m.isAchieved).length
     }
@@ -1325,15 +1325,18 @@
     const milestonesHTML = groups.map(g => `
       <div class="skill-group">
         <div class="skill-group-label">${g.label}</div>
-        ${g.steps.map(m => `
-          <div class="skill-step ${m.isAchieved?'achieved':''}">
-            <span class="step-check">${m.isAchieved?'✓':'○'}</span>
-            <span class="step-desc">
+        ${g.steps.map(m => {
+          const isMoved = m.auto_type === 'moved'
+          return `
+          <div class="skill-step ${m.isAchieved && !isMoved ? 'achieved' : ''}${isMoved ? ' moved-up' : ''}">
+            <span class="step-check">${isMoved ? '↑' : (m.isAchieved ? '✓' : '○')}</span>
+            <span class="step-desc"${isMoved ? ' style="text-decoration:line-through;opacity:0.45;color:inherit"' : ''}>
               ${m.description}
-              ${m.isAchieved && m.achievedDate ? `<span class="step-date">${m.achievedDate}</span>` : ''}
+              ${m.isAchieved && m.achievedDate && !isMoved ? `<span class="step-date">${m.achievedDate}</span>` : ''}
             </span>
-            ${m.auto_type ? '<span class="step-auto">自動</span>' : ''}
-          </div>`).join('')}
+            ${m.auto_type && !isMoved ? '<span class="step-auto">自動</span>' : ''}
+          </div>`
+        }).join('')}
       </div>`).join('')
 
     return `<div class="skill-card" id="skill-card-${skillId}">
